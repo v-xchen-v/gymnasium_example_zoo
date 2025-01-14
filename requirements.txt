@@ -2,3 +2,5 @@ swig
 gymnasium[classic_control,box2d]
 tqdm
 matplotlib
+panda-gym
+stable-baselines3[extra]
