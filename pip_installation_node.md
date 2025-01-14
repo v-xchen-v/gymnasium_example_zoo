@@ -6,5 +6,5 @@ pip install swig
 ```
 
 ```
-pip install gymnasium[box2d]
+pip install gymnasium[classic_control,box2d,atari]
 ```

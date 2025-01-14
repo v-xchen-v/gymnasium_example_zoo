@@ -77,17 +77,17 @@ for episode in tqdm(range(n_episode)):
 from matplotlib import pyplot as plt
 fig, axs = plt.subplots(1, 3, figsize=(20, 8))
 
-axs[0].plot(np.convolve(env.return_queue, np.ones(100)))
+axs[0].plot(np.convolve(env.return_queue, np.ones(100)/100))
 axs[0].set_title('Episode Rewards')
 axs[0].set_xlabel('Episode')
 axs[0].set_ylabel('Reward')
 
-axs[1].plot(np.convolve(env.length_queue, np.ones(100)))
+axs[1].plot(np.convolve(env.length_queue, np.ones(100)/100))
 axs[1].set_title("Episode Lengths")
 axs[1].set_xlabel("Episode")
 axs[1].set_ylabel("Length")
 
-axs[2].plot(np.convolve(agent.training_error, np.ones(100)))
+axs[2].plot(np.convolve(agent.training_error, np.ones(100)/100))
 axs[2].set_title("Training Error")
 axs[2].set_xlabel("Episode")
 axs[2].set_ylabel("Temporal Difference")
