@@ -41,7 +41,7 @@ class BlackjackAgent:
         self.env = env
         self.epsilon = 1.0
         self.discount_factor = 0.95
-        self.lr = 0.01
+        self.lr = 0.001
         self.training_error = []
         self.device = device
         self.q_network = ValueNetwork(env).to(device)
@@ -92,6 +92,7 @@ class BlackjackAgent:
             loss.backward()
             self.optimizer.step()
             
+            # target network could differ from the q network, but here we keep them the same for simplicity
             tau=1.0
             for target_network_param, q_network_param in zip(self.target_network.parameters(), self.q_network.parameters()):
                 target_network_param.data.copy_(
