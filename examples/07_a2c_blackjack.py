@@ -6,14 +6,31 @@ import numpy as np
 
 # Define the Policy (Actor) and Value (Critic) network
 class ActorCritic(nn.Module):
+    # def __init__(self, state_dim, action_dim):
+    #     super(ActorCritic, self).__init__()
+    #     # self.fc = nn.Linear(state_dim, 128)
+    #     self.fc = nn.Sequential(
+    #         nn.Linear(state_dim, 128),
+    #         nn.ReLU(),
+    #         nn.Linear(128, 128),
+    #     )
+        
+    #     # Actor network
+    #     self.actor = nn.Linear(128, action_dim)
+        
+    #     # Critic network
+    #     self.critic = nn.Linear(128, 1)
+        
+    # def forward(self, x):
+    #     x = torch.relu(self.fc(x))
+    #     action_probs = torch.softmax(self.actor(x), dim=-1)
+    #     state_value = self.critic(x)
+    #     return action_probs, state_value
+
     def __init__(self, state_dim, action_dim):
         super(ActorCritic, self).__init__()
-        # self.fc = nn.Linear(state_dim, 128)
-        self.fc = nn.Sequential(
-            nn.Linear(state_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-        )
+        self.actor_fc = nn.Linear(state_dim, 128)
+        self.critic_fc = nn.Linear(state_dim, 128)
         
         # Actor network
         self.actor = nn.Linear(128, action_dim)
@@ -22,14 +39,18 @@ class ActorCritic(nn.Module):
         self.critic = nn.Linear(128, 1)
         
     def forward(self, x):
-        x = torch.relu(self.fc(x))
-        action_probs = torch.softmax(self.actor(x), dim=-1)
-        state_value = self.critic(x)
+        actor_x = torch.relu(self.actor_fc(x))
+        critic_x = torch.relu(self.critic_fc(x))
+        
+        action_probs = torch.softmax(self.actor(actor_x), dim=-1)
+        state_value = self.critic(critic_x)
+        
         return action_probs, state_value
 
 # Function to preprocess the Blackjack state
 
 def preprocess_state(state):
+    
     return torch.tensor(state, dtype=torch.float32).unsqueeze(0)
 
 def select_action(policy, state):
