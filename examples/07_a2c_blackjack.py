@@ -30,6 +30,11 @@ class ActorCritic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(ActorCritic, self).__init__()
         self.actor_fc = nn.Linear(state_dim, 128)
+        # self.actor_fc = nn.Sequential(
+        #     nn.Linear(state_dim, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 128),
+        # )
         self.critic_fc = nn.Linear(state_dim, 128)
         
         # Actor network
@@ -61,16 +66,19 @@ def select_action(policy, state):
 # Training parameters
 gamma = 0.99  # Discount factor
 lr = 3e-4  # Learning rate
-n_episode = 10000 # Number of episodes
+n_episode = 2000 # Number of episodes
+# entropy_beta = 0.01  # Entropy regularization factor
 
-env = gym.make("Blackjack-v1", natural=False)
+# env = gym.make("Blackjack-v1", natural=False)
+env = gym.make("CartPole-v1")
 env = gym.wrappers.RecordEpisodeStatistics(env, buffer_length=n_episode)
 training_error = {
     'actor_loss': [],
     'critic_loss': []
 }
 
-state_dim = len(env.observation_space.shape) if env.observation_space.shape else 3
+# state_dim = len(env.observation_space.shape) if env.observation_space.shape else 3
+state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.n
 
 policy = ActorCritic(state_dim, action_dim)
@@ -82,18 +90,25 @@ for episode in range(n_episode):
     log_probs = []
     rewards = []
     values = []
+    # entropies = []
+    next_values = []
+    dones = []
     done = False
     
     while not done:
         action, log_prob = select_action(policy, state)
-        next_state, reward, done, _, _ = env.step(action)
+        next_state, reward, terminated, truncated, _ = env.step(action)
+        done = terminated or truncated
         next_state = preprocess_state(next_state)
         
-        _, state_value = policy(state)
+        action_probs, state_value = policy(state)
+        _, next_value = policy(next_state)
         
         log_probs.append(torch.log(log_prob))
         rewards.append(reward)
         values.append(state_value)
+        next_values.append(next_value)
+        dones.append(done)
         
         state = next_state
     
@@ -104,16 +119,27 @@ for episode in range(n_episode):
         G = reward + gamma * G
         returns.insert(0, G)
     returns = torch.tensor(returns, dtype=torch.float32)
-    values = torch.cat(values).squeeze()
+    values = torch.cat(values).squeeze(1)
+    next_values = torch.cat(next_values).squeeze(1)
+    # entropies.append(-torch.sum(action_probs * torch.log(action_probs)))
     
-    advantages = returns - values.detach()
-    
+    USE_BELLMAN = False
+    if not USE_BELLMAN:
+        advantages = returns - values
+    else:
+        # bellman equation, V(s) = r + gamma * V(s')
+        Q_s = torch.Tensor(np.array(rewards)) + gamma * next_values * (1-torch.Tensor(np.array(dones)))
+        advantages = Q_s - values
     # actor_loss encourages the policy to increase the probability of actions
     # that lead to higher advantages
-    actor_loss = -torch.sum(torch.stack(log_probs) * advantages)
+    actor_loss = -torch.mean(torch.stack(log_probs) * advantages)
+    # actor_loss -= entropy_beta * torch.sum(torch.stack(entropies))
     # critic_loss is calculated using the MSE loss between values and return,
     # which helps the critic network to better estimate the value function.
-    critic_loss = torch.nn.functional.mse_loss(values, returns)
+    if not USE_BELLMAN:
+        critic_loss = torch.nn.functional.mse_loss(values, returns)
+    else:
+        critic_loss = torch.nn.functional.mse_loss(values, Q_s)
     loss = actor_loss + critic_loss
     training_error['actor_loss'].append(actor_loss.item())
     training_error['critic_loss'].append(critic_loss.item())
@@ -122,7 +148,7 @@ for episode in range(n_episode):
     loss.backward()
     optimizer.step()
     
-    if episode % 500 == 0:
+    if episode % 10 == 0:
         print(f"Episode {episode}, Loss: {loss.item():.4f}")
         
 # visualize the training reward
